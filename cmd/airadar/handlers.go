@@ -30,6 +30,22 @@ func loadConfig() (*config.Config, error) {
 	return config.Load(path)
 }
 
+func buildEngine(cfg *config.Config, db store.Store) *trend.Engine {
+	var llm *trend.LLMEvaluator
+	if cfg.Trend.LLM.Enabled && cfg.Trend.LLM.APIKey != "" {
+		llm = trend.NewLLMEvaluator(
+			cfg.Trend.LLM.Provider,
+			cfg.Trend.LLM.Model,
+			cfg.Trend.LLM.APIKey,
+			cfg.Trend.LLM.BaseURL,
+			cfg.Trend.LLM.MinScore,
+		)
+		fmt.Fprintf(os.Stderr, "llm evaluator: %s/%s (min_score: %.0f)\n",
+			cfg.Trend.LLM.Provider, cfg.Trend.LLM.Model, cfg.Trend.LLM.MinScore)
+	}
+	return trend.NewEngine(db, cfg.Trend.VelocityWeight, cfg.Trend.CrossSourceWeight, cfg.Trend.AbsoluteWeight, llm)
+}
+
 func buildSources(cfg *config.Config, filter *source.Filter) []source.Source {
 	var sources []source.Source
 
@@ -160,7 +176,7 @@ func runTrends(jsonOutput bool, minScore float64, limit int) error {
 	defer db.Close()
 
 	// Run trend detection first.
-	engine := trend.NewEngine(db, cfg.Trend.VelocityWeight, cfg.Trend.CrossSourceWeight, cfg.Trend.AbsoluteWeight)
+	engine := buildEngine(cfg, db)
 	if _, err := engine.Detect(context.Background()); err != nil {
 		fmt.Fprintf(os.Stderr, "trend detection error: %v\n", err)
 	}
@@ -214,7 +230,7 @@ func runServe(port int) error {
 	}
 	defer db.Close()
 
-	engine := trend.NewEngine(db, cfg.Trend.VelocityWeight, cfg.Trend.CrossSourceWeight, cfg.Trend.AbsoluteWeight)
+	engine := buildEngine(cfg, db)
 	filter := source.NewFilter(cfg.Filter.ExtraKeywords, cfg.Filter.ExcludeKeywords)
 	sources := buildSources(cfg, filter)
 
@@ -238,7 +254,7 @@ func runDaemon(port int) error {
 	}
 	defer db.Close()
 
-	engine := trend.NewEngine(db, cfg.Trend.VelocityWeight, cfg.Trend.CrossSourceWeight, cfg.Trend.AbsoluteWeight)
+	engine := buildEngine(cfg, db)
 	filter := source.NewFilter(cfg.Filter.ExtraKeywords, cfg.Filter.ExcludeKeywords)
 	sources := buildSources(cfg, filter)
 	alertMgr := buildAlertManager(cfg)

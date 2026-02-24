@@ -115,10 +115,21 @@ type FeedItem struct {
 
 // TrendConfig configures trend detection.
 type TrendConfig struct {
-	MinScore          float64 `yaml:"min_score"`
-	VelocityWeight    float64 `yaml:"velocity_weight"`
-	CrossSourceWeight float64 `yaml:"cross_source_weight"`
-	AbsoluteWeight    float64 `yaml:"absolute_weight"`
+	MinScore          float64   `yaml:"min_score"`
+	VelocityWeight    float64   `yaml:"velocity_weight"`
+	CrossSourceWeight float64   `yaml:"cross_source_weight"`
+	AbsoluteWeight    float64   `yaml:"absolute_weight"`
+	LLM               LLMConfig `yaml:"llm"`
+}
+
+// LLMConfig configures the optional LLM batch evaluator.
+type LLMConfig struct {
+	Enabled  bool    `yaml:"enabled"`
+	Provider string  `yaml:"provider"` // "openai" or "anthropic"
+	Model    string  `yaml:"model"`
+	APIKey   string  `yaml:"api_key"`
+	BaseURL  string  `yaml:"base_url"`  // custom endpoint (optional)
+	MinScore float64 `yaml:"min_score"` // LLM relevance threshold 0-10 (default: 6)
 }
 
 // AlertsConfig configures alert destinations.
@@ -204,6 +215,11 @@ func Default() *Config {
 			VelocityWeight:    0.3,
 			CrossSourceWeight: 0.5,
 			AbsoluteWeight:    0.2,
+			LLM: LLMConfig{
+				Provider: "openai",
+				Model:    "gpt-4o-mini",
+				MinScore: 6,
+			},
 		},
 		Alerts: AlertsConfig{},
 		Server: ServerConfig{Port: 8080},
@@ -252,5 +268,15 @@ func applyEnvOverrides(cfg *Config) {
 	if v := os.Getenv("DISCORD_WEBHOOK_URL"); v != "" {
 		cfg.Alerts.Discord.WebhookURL = v
 		cfg.Alerts.Discord.Enabled = true
+	}
+	if v := os.Getenv("OPENAI_API_KEY"); v != "" {
+		cfg.Trend.LLM.APIKey = v
+		cfg.Trend.LLM.Enabled = true
+		cfg.Trend.LLM.Provider = "openai"
+	}
+	if v := os.Getenv("ANTHROPIC_API_KEY"); v != "" {
+		cfg.Trend.LLM.APIKey = v
+		cfg.Trend.LLM.Enabled = true
+		cfg.Trend.LLM.Provider = "anthropic"
 	}
 }

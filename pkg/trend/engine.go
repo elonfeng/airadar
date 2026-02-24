@@ -18,10 +18,11 @@ type Engine struct {
 	velocityWeight    float64
 	crossSourceWeight float64
 	absoluteWeight    float64
+	llm               *LLMEvaluator // optional, nil = disabled
 }
 
 // NewEngine creates a new trend detection engine.
-func NewEngine(s store.Store, velocityW, crossSourceW, absoluteW float64) *Engine {
+func NewEngine(s store.Store, velocityW, crossSourceW, absoluteW float64, llm *LLMEvaluator) *Engine {
 	if velocityW+crossSourceW+absoluteW == 0 {
 		velocityW = 0.3
 		crossSourceW = 0.5
@@ -32,6 +33,7 @@ func NewEngine(s store.Store, velocityW, crossSourceW, absoluteW float64) *Engin
 		velocityWeight:    velocityW,
 		crossSourceWeight: crossSourceW,
 		absoluteWeight:    absoluteW,
+		llm:               llm,
 	}
 }
 
@@ -62,6 +64,19 @@ func (e *Engine) Detect(ctx context.Context) ([]store.Trend, error) {
 	// Clear old trends and regenerate.
 	if err := e.store.ClearTrends(ctx); err != nil {
 		return nil, fmt.Errorf("clear trends: %w", err)
+	}
+
+	// LLM batch evaluation: send all items to LLM in one call,
+	// filter out low-value items, and use LLM topics for better clustering.
+	if e.llm != nil {
+		items, err = e.llmFilter(ctx, items)
+		if err != nil {
+			fmt.Printf("  llm evaluation error (falling back to algorithm): %v\n", err)
+			// Continue with all items if LLM fails.
+		}
+		if len(items) == 0 {
+			return nil, nil
+		}
 	}
 
 	// Cluster items into topics.
@@ -99,6 +114,39 @@ func (e *Engine) Detect(ctx context.Context) ([]store.Trend, error) {
 	})
 
 	return trends, nil
+}
+
+// llmFilter sends all items to the LLM in one batch call and keeps only high-value ones.
+// Also replaces item titles with LLM-generated topic labels for better clustering.
+func (e *Engine) llmFilter(ctx context.Context, items []source.Item) ([]source.Item, error) {
+	results, err := e.llm.EvaluateItems(ctx, items)
+	if err != nil {
+		return items, err // return original items on error
+	}
+
+	if len(results) == 0 {
+		return nil, nil
+	}
+
+	// Build lookup: item ID -> LLM result.
+	resultMap := make(map[string]LLMResult)
+	for _, r := range results {
+		resultMap[r.ID] = r
+	}
+
+	// Keep only items that passed LLM filter, use LLM topic as title.
+	var filtered []source.Item
+	for i := range items {
+		if r, ok := resultMap[items[i].ID]; ok {
+			if r.Topic != "" {
+				items[i].Title = r.Topic // use LLM's clean topic label
+			}
+			filtered = append(filtered, items[i])
+		}
+	}
+
+	fmt.Printf("  llm: %d/%d items passed evaluation\n", len(filtered), len(items))
+	return filtered, nil
 }
 
 // clusterItems groups items with similar titles into topic clusters.

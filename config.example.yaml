@@ -68,6 +68,17 @@ trend:
   cross_source_weight: 0.5
   absolute_weight: 0.2
 
+  # LLM evaluation: batch-evaluate all collected items in one API call.
+  # Filters out noise and surfaces only genuinely important AI trends.
+  # Cost: ~$0.01-0.05 per evaluation cycle (depends on item count and model).
+  llm:
+    enabled: false
+    provider: "openai"           # "openai" or "anthropic"
+    model: "gpt-4o-mini"         # or "claude-sonnet-4-20250514"
+    # api_key: ""                # or set OPENAI_API_KEY / ANTHROPIC_API_KEY
+    # base_url: ""               # custom endpoint (optional, for proxies)
+    min_score: 6                 # LLM relevance score threshold (0-10, items below are filtered out)
+
 alerts:
   slack:
     enabled: false

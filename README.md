@@ -51,6 +51,8 @@ cp config.example.yaml config.yaml
 | `YOUTUBE_API_KEY` | YouTube Data API v3 key |
 | `SLACK_WEBHOOK_URL` | Slack incoming webhook URL |
 | `DISCORD_WEBHOOK_URL` | Discord webhook URL |
+| `OPENAI_API_KEY` | OpenAI API key (enables LLM evaluation) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (enables LLM evaluation) |
 | `AIRADAR_DB_PATH` | SQLite database path (default: ./airadar.db) |
 
 ### Sources
@@ -98,6 +100,23 @@ The trend engine uses three weighted scoring strategies:
 3. **Absolute Score (20%)** — Raw score normalized by source type. HN 500 points ≠ Reddit 500 upvotes.
 
 Topics scoring above the threshold (default: 30) trigger alerts.
+
+### LLM Evaluation (Optional)
+
+When enabled, all collected items are sent to an LLM in **one batch API call** per detection cycle. The LLM scores each item 0-10 for AI relevance and importance, filtering out noise before trend scoring. Only items above the threshold (default: 6) are kept.
+
+- **Cost**: ~$0.01-0.05 per cycle with `gpt-4o-mini`, depending on item count
+- **Frequency**: Once per trend detection interval (default: every 30 minutes)
+- **Providers**: OpenAI (`gpt-4o-mini`, `gpt-4o`) or Anthropic (`claude-sonnet-4-20250514`)
+- **Fallback**: If LLM call fails, falls back to pure algorithmic detection
+
+Enable via environment variable:
+
+```bash
+export OPENAI_API_KEY="sk-..."   # auto-enables LLM with gpt-4o-mini
+# or
+export ANTHROPIC_API_KEY="sk-..."  # auto-enables LLM with Claude
+```
 
 ## Deploy
 
