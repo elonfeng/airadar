@@ -1,0 +1,90 @@
+database:
+  path: "./airadar.db"
+
+schedule:
+  collect_interval: "15m"
+  trend_interval: "30m"
+
+sources:
+  hackernews:
+    enabled: true
+    limit: 100
+
+  github:
+    enabled: true
+    # token: ""  # or set GITHUB_TOKEN env var for higher rate limits
+
+  reddit:
+    enabled: false  # requires OAuth2 credentials
+    # client_id: ""     # or set REDDIT_CLIENT_ID
+    # client_secret: "" # or set REDDIT_CLIENT_SECRET
+    subreddits:
+      - MachineLearning
+      - artificial
+      - LocalLLM
+      - singularity
+      - ChatGPT
+      - StableDiffusion
+
+  arxiv:
+    enabled: true
+    categories:
+      - cs.AI
+      - cs.CL
+      - cs.CV
+      - cs.LG
+    max_results: 50
+
+  twitter:
+    enabled: false  # uses Nitter RSS, may be unreliable
+    nitter_url: "https://nitter.net"
+    accounts:
+      - _akhaliq
+      - ylecun
+
+  youtube:
+    enabled: false  # requires API key
+    # api_key: ""  # or set YOUTUBE_API_KEY
+    queries:
+      - "AI news"
+      - "LLM"
+      - "artificial intelligence"
+
+  rss:
+    enabled: true
+    feeds:
+      - name: TechCrunch AI
+        url: https://techcrunch.com/category/artificial-intelligence/feed/
+      - name: The Verge AI
+        url: https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
+      - name: Ars Technica
+        url: https://feeds.arstechnica.com/arstechnica/technology-lab
+      - name: VentureBeat AI
+        url: https://venturebeat.com/category/ai/feed/
+
+trend:
+  min_score: 30
+  velocity_weight: 0.3
+  cross_source_weight: 0.5
+  absolute_weight: 0.2
+
+alerts:
+  slack:
+    enabled: false
+    # webhook_url: ""  # or set SLACK_WEBHOOK_URL
+
+  discord:
+    enabled: false
+    # webhook_url: ""  # or set DISCORD_WEBHOOK_URL
+
+  webhook:
+    enabled: false
+    # url: ""
+    # secret: ""  # HMAC signing key
+
+server:
+  port: 8080
+
+filter:
+  extra_keywords: []
+  exclude_keywords: []

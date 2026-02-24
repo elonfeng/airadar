@@ -1,0 +1,7 @@
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+config.yaml
+.env
+/airadar
